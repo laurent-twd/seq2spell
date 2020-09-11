@@ -115,46 +115,4 @@ class Decoder(tf.keras.Model):
 
     return x, [h, c], attention_weights
 
-vector_size = 128
-enc_units = 256
-dec_units = enc_units
-
-loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits = True, reduction = 'none')
-encoder = Encoder(100, vector_size, enc_units)
-decoder = Decoder(50000, vector_size, dec_units)
-optimizer = tf.keras.optimizers.Adam(1e-4)
-
-def loss_function(real, pred):
-    mask = tf.math.logical_not(tf.math.equal(real, 0))
-    loss_ = loss_object(real, pred)
-    mask = tf.cast(mask, dtype = loss_.dtype)
-    loss_ *= mask
-    return loss_
-
-def train_step(padded_char_lr, padded_target_words, training):
-
-    with tf.GradientTape() as tape:
-        hidden_states = tf.constant(0., shape = (padded_char_lr.shape[0], encoder.enc_units))
-        x, h =  encoder(padded_char_lr, hidden_states)
-        dec_hidden = h, tf.constant(0., shape = (padded_char_lr.shape[0], decoder.dec_units))
-        mask_input = tf.cast(tf.not_equal(padded_char_lr, 0), dtype = tf.float32)
-        mask_output = tf.cast(tf.not_equal(padded_target_words, 0), dtype = tf.float32)
-
-        batch_loss = []
-        for t in range(padded_target_words.shape[1] - 1):
-            print(t)
-            dec_input = tf.expand_dims(padded_target_words[:, t], 1)
-            predictions, dec_hidden, _ = decoder(dec_input, dec_hidden, x, mask_input)
-            loss = tf.expand_dims(loss_function(padded_target_words[:, t + 1], predictions), axis = 1)
-            batch_loss.append(loss)
-        batch_loss = tf.concat(batch_loss, axis = 1)
-        batch_loss = tf.reduce_sum(batch_loss * mask_output[:, 1:], axis = 1) / (tf.reduce_sum(mask_output, axis = 1) - 1.)
-        batch_loss = tf.reduce_mean(batch_loss)
-
-        variables = encoder.trainable_variables + decoder.trainable_variables 
-        gradients = tape.gradient(batch_loss, variables)
-        optimizer.apply_gradients(zip(gradients, variables))
-
-        return batch_loss
-
 
