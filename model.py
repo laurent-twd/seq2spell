@@ -14,14 +14,18 @@ class Encoder(tf.keras.Model):
     self.gru_lr = tf.keras.layers.GRU(self.enc_units,
                                    return_sequences = True,
                                    return_state = True,
-                                   recurrent_initializer='glorot_uniform')
+                                   recurrent_initializer='glorot_uniform',
+                                   dropout = 0.5,
+                                   recurrent_dropout = 0.5)
     
     self.gru_rl = tf.keras.layers.GRU(self.enc_units,
                                    return_sequences = True,
                                    return_state = True,
-                                   recurrent_initializer = 'glorot_uniform')    
+                                   recurrent_initializer = 'glorot_uniform',
+                                   dropout = 0.5,
+                                   recurrent_dropout = 0.5)
     
-  def call(self, padded_char_lr, hidden_states):
+  def call(self, padded_char_lr, hidden_states, training):
     
     padded_char_rl = tf.reverse(padded_char_lr, axis = [1])
     x_lr = self.embedding(padded_char_rl)
@@ -31,8 +35,8 @@ class Encoder(tf.keras.Model):
     mask_lr = self.embedding.compute_mask(padded_char_lr)
     mask_rl = self.embedding.compute_mask(padded_char_rl)
 
-    x_lr, h_lr = self.gru_lr(x_lr, initial_state = hidden_states, mask = mask_lr)
-    x_rl, h_rl = self.gru_rl(x_lr, initial_state = hidden_states, mask = mask_rl)
+    x_lr, h_lr = self.gru_lr(x_lr, initial_state = hidden_states, mask = mask_lr, training = training)
+    x_rl, h_rl = self.gru_rl(x_lr, initial_state = hidden_states, mask = mask_rl, training = training)
 
     x = tf.concat([x_lr, tf.reverse(x_rl, axis = [1])], axis = 2)
     h = tf.concat([h_lr, h_rl], axis = 1)
@@ -72,15 +76,17 @@ class Decoder(tf.keras.Model):
     self.gru = tf.keras.layers.GRU(self.dec_units,
                                    return_sequences=True,
                                    return_state=True,
-                                   recurrent_initializer='glorot_uniform')
+                                   recurrent_initializer='glorot_uniform',
+                                   dropout = 0.5,
+                                   recurrent_dropout = 0.5)
     
     self.fc = tf.keras.layers.Dense(n_char + 4, name = 'dense_output')
     self.attention = BahdanauAttention(self.dec_units)
 
-  def call(self, inputs, initial_states, enc_outputs, mask):
+  def call(self, inputs, initial_states, enc_outputs, mask, training):
 
     x = self.embedding(inputs)
-    x, h = self.gru(x, initial_state = initial_states)
+    x, h = self.gru(x, initial_state = initial_states, training = training)
     context_vector, attention_weights = self.attention(h, enc_outputs, mask)
 
     x = tf.reshape(x, (-1, x.shape[2]))
