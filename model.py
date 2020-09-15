@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+
+
 class Encoder(tf.keras.Model):
   def __init__(self, n_char, vector_size, enc_units):
     super(Encoder, self).__init__()
@@ -55,8 +57,8 @@ class BahdanauAttention(tf.keras.layers.Layer):
     query_with_time_axis = tf.expand_dims(query, 1)
     score = self.V(tf.nn.tanh(
         self.W1(query_with_time_axis) + self.W2(values)))
-
-    score += (tf.expand_dims(mask, axis = 2) * -1e9) 
+    new_mask = 1. - mask
+    score += (tf.expand_dims(new_mask, axis = 2) * -1e9) 
     attention_weights = tf.nn.softmax(score, axis = 1) 
 
     context_vector = attention_weights * values
