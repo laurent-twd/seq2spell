@@ -85,9 +85,10 @@ class Decoder(tf.keras.Model):
     self.fc = tf.keras.layers.Dense(n_char + 4, name = 'dense_output')
     self.attention = BahdanauAttention(self.dec_units)
 
-  def call(self, inputs, initial_states, enc_outputs, mask, training):
+  def call(self, inputs, initial_states, final_state_encoder, enc_outputs, mask, training):
 
     x = self.embedding(inputs)
+    x = tf.concat([x, tf.expand_dims(final_state_encoder, axis = 1)], axis = 2)
     x, h = self.gru(x, initial_state = initial_states, training = training)
     context_vector, attention_weights = self.attention(h, enc_outputs, mask)
 
