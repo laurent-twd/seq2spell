@@ -30,7 +30,7 @@ class Encoder(tf.keras.Model):
   def call(self, padded_char_lr, hidden_states, training):
     
     padded_char_rl = tf.reverse(padded_char_lr, axis = [1])
-    x_lr = self.embedding(padded_char_rl)
+    x_lr = self.embedding(padded_char_lr)
     x_rl = self.embedding(padded_char_rl)
 
     # Bi-LSTM network
@@ -38,7 +38,7 @@ class Encoder(tf.keras.Model):
     mask_rl = self.embedding.compute_mask(padded_char_rl)
 
     x_lr, h_lr, c_lr = self.lstm_lr(x_lr, initial_state = hidden_states, mask = mask_lr, training = training)
-    x_rl, h_rl, c_rl = self.lstm_rl(x_lr, initial_state = hidden_states, mask = mask_rl, training = training)
+    x_rl, h_rl, c_rl = self.lstm_rl(x_rl, initial_state = hidden_states, mask = mask_rl, training = training)
 
     x = tf.concat([x_lr, tf.reverse(x_rl, axis = [1])], axis = 2)
     h = tf.concat([h_lr, h_rl], axis = 1)
