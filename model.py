@@ -29,10 +29,10 @@ class Encoder(tf.keras.Model):
     
   def call(self, padded_char_lr, hidden_states, training):
     
-    x_lr = self.embedding(padded_char_lr)
+    x = self.embedding(padded_char_lr)
     mask_lr = self.embedding.compute_mask(padded_char_lr)
-    x, _, _ = self.lstm_1(x_lr, initial_state = hidden_states, mask = mask_lr, training = training)
-    x, h, c = self.lstm_2(x_lr, initial_state = hidden_states, mask = mask_lr, training = training)
+    x, _, _ = self.lstm_1(x, initial_state = hidden_states, mask = mask_lr, training = training)
+    x, h, c = self.lstm_2(x, initial_state = hidden_states, mask = mask_lr, training = training)
 
     return x, h, c
 
