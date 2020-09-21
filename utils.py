@@ -36,7 +36,7 @@ def get_distance(key1, key2):
     except:
         return 10
 
-def get_noisy_text(text, char2idx, p_error = 0.08, p_delete = 0.3, p_insert = 0.1, p_transpose = 0.3, p_replace = 0.3):
+def get_noisy_text(text, char2idx, p_error = 0.04, p_delete = 0.3, p_insert = 0.1, p_transpose = 0.3, p_replace = 0.3):
 
     p = [p_delete, p_insert, p_transpose, p_replace]
 
@@ -56,11 +56,9 @@ def get_noisy_text(text, char2idx, p_error = 0.08, p_delete = 0.3, p_insert = 0.
         new_sentence = ''
 
         is_error = np.random.binomial(1, p_error, size = n)
-        type_errors = np.random.choice(range(4), p = p, size = int(2 * n * p_error))
+        type_errors = np.random.choice(range(4), p = p, size = n)
         j = 0
         while i < n - 1:
-            if j >= int(2 * n * p_error):
-                j = 0
             if is_error[i] and sentence[i] in set_characters:
                 type_error = type_errors[j]
                 j+=1

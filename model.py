@@ -13,14 +13,14 @@ class Encoder(tf.keras.Model):
                                             mask_zero = True,
                                             trainable = True)
     
-    self.lstm_lr = tf.keras.layers.LSTM(self.enc_units,
+    self.lstm_1 = tf.keras.layers.LSTM(self.enc_units,
                                    return_sequences = True,
                                    return_state = True,
                                    recurrent_initializer='glorot_uniform',
                                    dropout = 0.5,
                                    recurrent_dropout = 0.5)
     
-    self.lstm_rl = tf.keras.layers.LSTM(self.enc_units,
+    self.lstm_2 = tf.keras.layers.LSTM(self.enc_units,
                                    return_sequences = True,
                                    return_state = True,
                                    recurrent_initializer = 'glorot_uniform',
@@ -29,20 +29,10 @@ class Encoder(tf.keras.Model):
     
   def call(self, padded_char_lr, hidden_states, training):
     
-    padded_char_rl = tf.reverse(padded_char_lr, axis = [1])
     x_lr = self.embedding(padded_char_lr)
-    x_rl = self.embedding(padded_char_rl)
-
-    # Bi-LSTM network
     mask_lr = self.embedding.compute_mask(padded_char_lr)
-    mask_rl = self.embedding.compute_mask(padded_char_rl)
-
-    x_lr, h_lr, c_lr = self.lstm_lr(x_lr, initial_state = hidden_states, mask = mask_lr, training = training)
-    x_rl, h_rl, c_rl = self.lstm_rl(x_rl, initial_state = hidden_states, mask = mask_rl, training = training)
-
-    x = tf.concat([x_lr, tf.reverse(x_rl, axis = [1])], axis = 2)
-    h = tf.concat([h_lr, h_rl], axis = 1)
-    c = tf.concat([c_lr, c_rl], axis = 1)
+    x, _, _ = self.lstm_1(x_lr, initial_state = hidden_states, mask = mask_lr, training = training)
+    x, h, c = self.lstm_2(x_lr, initial_state = hidden_states, mask = mask_lr, training = training)
 
     return x, h, c
 
@@ -76,12 +66,19 @@ class Decoder(tf.keras.Model):
                                                mask_zero = False,
                                                trainable = True)
 
-    self.lstm = tf.keras.layers.LSTM(self.dec_units,
+    self.lstm_1 = tf.keras.layers.LSTM(self.dec_units,
                                    return_sequences=True,
                                    return_state=True,
                                    recurrent_initializer='glorot_uniform',
                                    dropout = 0.5,
                                    recurrent_dropout = 0.5)
+
+    self.lstm_2 = tf.keras.layers.LSTM(self.dec_units,
+                                  return_sequences=True,
+                                  return_state=True,
+                                  recurrent_initializer='glorot_uniform',
+                                  dropout = 0.5,
+                                  recurrent_dropout = 0.5)
     
     self.fc = tf.keras.layers.Dense(n_char + 4, name = 'dense_output')
     self.attention = BahdanauAttention(self.dec_units)
@@ -90,13 +87,15 @@ class Decoder(tf.keras.Model):
 
     x = self.embedding(inputs)
     x = tf.concat([x, tf.expand_dims(final_state_encoder, axis = 1)], axis = 2)
-    x, h, c = self.lstm(x, initial_state = initial_states, training = training)
-    context_vector, attention_weights = self.attention(h, enc_outputs, mask)
+    x, h1, c1 = self.lstm_1(x, initial_state = initial_states[0], training = training)
+    x, h2, c2 = self.lstm_2(x, initial_state = initial_states[1], training = training)
+
+    context_vector, attention_weights = self.attention(h2, enc_outputs, mask)
 
     x = tf.reshape(x, (-1, x.shape[2]))
     x = tf.concat([x, context_vector], axis = 1)
     x = self.fc(x)
 
-    return x, h, c, attention_weights
+    return x, [[h1, c1], [h2, c2]], attention_weights
 
 
