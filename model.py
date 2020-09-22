@@ -6,35 +6,33 @@ class Encoder(tf.keras.Model):
   def __init__(self, n_char, vector_size, enc_units):
     super(Encoder, self).__init__()
     self.enc_units = enc_units
-    self.range_cnn_kernel_size = range(2, 6)
-    self.embedding = tf.keras.layers.Embedding(
-                                            input_dim = n_char + 4, 
-                                            output_dim = vector_size,
-                                            mask_zero = True,
-                                            trainable = True)
+    self.embedding = tf.keras.layers.Embedding(input_dim = n_char + 4, 
+                                               output_dim = vector_size,
+                                               mask_zero = True,
+                                               trainable = True)
     
     self.lstm_1 = tf.keras.layers.LSTM(self.enc_units,
                                    return_sequences = True,
                                    return_state = True,
                                    recurrent_initializer='glorot_uniform',
-                                   dropout = 0.5,
-                                   recurrent_dropout = 0.5)
+                                   dropout = 0.1,
+                                   recurrent_dropout = 0.1)
     
     self.lstm_2 = tf.keras.layers.LSTM(self.enc_units,
                                    return_sequences = True,
                                    return_state = True,
                                    recurrent_initializer = 'glorot_uniform',
-                                   dropout = 0.5,
-                                   recurrent_dropout = 0.5)
+                                   dropout = 0.1,
+                                   recurrent_dropout = 0.1)
     
   def call(self, padded_char_lr, hidden_states, training):
     
     x = self.embedding(padded_char_lr)
     mask_lr = self.embedding.compute_mask(padded_char_lr)
-    x, _, _ = self.lstm_1(x, initial_state = hidden_states, mask = mask_lr, training = training)
-    x, h, c = self.lstm_2(x, initial_state = hidden_states, mask = mask_lr, training = training)
+    x, h1, c1 = self.lstm_1(x, initial_state = hidden_states, mask = mask_lr, training = training)
+    x, h2, c2 = self.lstm_2(x, initial_state = hidden_states, mask = mask_lr, training = training)
 
-    return x, h, c
+    return x, [[h1, c1], [h2, c2]]
 
 class BahdanauAttention(tf.keras.layers.Layer):
   def __init__(self, units):
@@ -67,18 +65,18 @@ class Decoder(tf.keras.Model):
                                                trainable = True)
 
     self.lstm_1 = tf.keras.layers.LSTM(self.dec_units,
-                                   return_sequences=True,
-                                   return_state=True,
-                                   recurrent_initializer='glorot_uniform',
-                                   dropout = 0.5,
-                                   recurrent_dropout = 0.5)
+                                      return_sequences=True,
+                                      return_state=True,
+                                      recurrent_initializer='glorot_uniform',
+                                      dropout = 0.1,
+                                      recurrent_dropout = 0.1)
 
     self.lstm_2 = tf.keras.layers.LSTM(self.dec_units,
-                                  return_sequences=True,
-                                  return_state=True,
-                                  recurrent_initializer='glorot_uniform',
-                                  dropout = 0.5,
-                                  recurrent_dropout = 0.5)
+                                      return_sequences=True,
+                                      return_state=True,
+                                      recurrent_initializer='glorot_uniform',
+                                      dropout = 0.1,
+                                      recurrent_dropout = 0.1)
     
     self.fc = tf.keras.layers.Dense(n_char + 4, name = 'dense_output')
     self.attention = BahdanauAttention(self.dec_units)
